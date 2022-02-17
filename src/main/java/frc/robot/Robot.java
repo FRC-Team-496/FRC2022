@@ -1,136 +1,49 @@
-/*----------------------------------------------------------------------------*/
-/* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
-/* Open Source Software - may be modified and shared by FRC teams. The code   */
-/* must be accompanied by the FIRST BSD license file in the root directory of */
-/* the project.                                                               */
-/*----------------------------------------------------------------------------*/
+// Copyright (c) FIRST and other WPILib contributors.
+// Open Source Software; you can modify and/or share it under the terms of
+// the WPILib BSD license file in the root directory of this project.
 
 package frc.robot;
 
-import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.command.Scheduler;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.subsystems.DriveTrain;
+import edu.wpi.first.wpilibj.XboxController;
 
-
-/**
- * The VM is configured to automatically run this class, and to call the
- * functions corresponding to each mode, as described in the TimedRobot
- * documentation. If you change the name of this class or the package after
- * creating this project, you must also update the build.gradle file in the
- * project.
- */
 public class Robot extends TimedRobot {
-  
-  public static OI m_oi;
-  public static DriveTrain m_driveTrain;
+  private final XboxController m_controller = new XboxController(0);
+  private final Drivetrain m_mecanum = new Drivetrain();
 
+  // Slew rate limiters to make joystick inputs more gentle; 1/3 sec from 0 to 1. ease into output
+  private final SlewRateLimiter m_xspeedLimiter = new SlewRateLimiter(3);
+  private final SlewRateLimiter m_yspeedLimiter = new SlewRateLimiter(3);
+  private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(3);
 
-  //public static BadLog log;
-
-  /**
-   * This function is run when the robot is first started up and should be
-   * used for any initialization code.
-   */
-  @Override
-  public void robotInit() {
-    //log = BadLog.init("test.bag");
-    //BadLog.createValue("Match Number", ""+ DriverStation.getMatchNumber());
-    //BadLog.createTopic("Match Time","s",() -> DriverStation.getMatchTime());
-
-    m_driveTrain = new DriveTrain();
-    m_oi = new OI();
-
-    //SmartDashboard.putData(new (RotateTo(45f)));
-    CameraServer.startAutomaticCapture();
-    //log.finishInitialization();
-    
-  }
-
-  /**
-   * This function is called every robot packet, no matter the mode. Use
-   * this for items like diagnostics that you want ran during disabled,
-   * autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before
-   * LiveWindow and SmartDashboard integrated updating.
-   */
-  @Override
-  public void robotPeriodic() {
-   //log.updateTopics();
-   // log.log();
-  }
-
-  /**
-   * This function is called once each time the robot enters Disabled mode.
-   * You can use it to reset any subsystem information you want to clear when
-   * the robot is disabled.
-   */
-  @Override
-  public void disabledInit() {
-  }
-
-  @Override
-  public void disabledPeriodic() {
-    Scheduler.getInstance().run();
-  }
-
-  /**
-   * This autonomous (along with the chooser code above) shows how to select
-   * between different autonomous modes using the dashboard. The sendable
-   * chooser code works with the Java SmartDashboard. If you prefer the
-   * LabVIEW Dashboard, remove all of the chooser code and uncomment the
-   * getString code to get the auto name from the text box below the Gyro
-   *
-   * <p>You can add additional auto modes by adding additional commands to the
-   * chooser code above (like the commented example) or additional comparisons
-   * to the switch structure below with additional strings & commands.
-   */
-  @Override
-  public void autonomousInit() {
-    teleopPeriodic();
-
-    /*
-     * String autoSelected = SmartDashboard.getString("Auto Selector",
-     * "Default"); switch(autoSelected) { case "My Auto": autonomousCommand
-     * = new MyAutoCommand(); break; case "Default Auto": default:
-     * autonomousCommand = new ExampleCommand(); break; }
-     */
-
- 
-  }
-
-  /**
-   * This function is called periodically during autonomous.
-   */
   @Override
   public void autonomousPeriodic() {
-    Scheduler.getInstance().run();
-    teleopPeriodic();
+    driveWithJoystick(false);
+    m_mecanum.updateOdometry();
   }
 
-  @Override
-  public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-  
-  }
-
-  /**
-   * This function is called periodically during operator control.
-   */
   @Override
   public void teleopPeriodic() {
-    Scheduler.getInstance().run();
+    driveWithJoystick(false);
   }
 
-  /**
-   * This function is called periodically during test mode.
-   */
-  @Override
-  public void testPeriodic() {
+  private void driveWithJoystick(boolean fieldRelative) {
+    // Get the x speed. We are inverting this because Xbox controllers return
+    // negative values when we push forward.
+    final var xSpeed = -m_xspeedLimiter.calculate(m_controller.getLeftY()) * Drivetrain.kMaxSpeed;
+
+    // Get the y speed or sideways/strafe speed. We are inverting this because
+    // we want a positive value when we pull to the left. Xbox controllers
+    // return positive values when you pull to the right by default.
+    final var ySpeed = -m_yspeedLimiter.calculate(m_controller.getLeftX()) * Drivetrain.kMaxSpeed;
+
+    // Get the rate of angular rotation. We are inverting this because we want a
+    // positive value when we pull to the left (remember, CCW is positive in
+    // mathematics). Xbox controllers return positive values when you pull to
+    // the right by default.
+    final var rot = -m_rotLimiter.calculate(m_controller.getRightX()) * Drivetrain.kMaxAngularSpeed;
+
+    m_mecanum.drive(xSpeed, ySpeed, rot, fieldRelative);
   }
 }

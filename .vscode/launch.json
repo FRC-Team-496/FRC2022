@@ -9,7 +9,7 @@
       "name": "Launch Main",
       "request": "launch",
       "mainClass": "frc.robot.Main",
-      "projectName": "496InfiniteRecharge-Official-Imported"
+      "projectName": "MecanumBot"
     },
     {
       "type": "wpilib",
