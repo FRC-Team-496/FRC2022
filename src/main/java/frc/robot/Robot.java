@@ -9,7 +9,11 @@ package frc.robot;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.command.Scheduler;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.subsystems.DriveTrain;
 
@@ -23,11 +27,11 @@ import frc.robot.subsystems.DriveTrain;
  */
 public class Robot extends TimedRobot {
   
-  public static OI m_oi;
-  public static DriveTrain m_driveTrain;
+  public static OI m_oi = new OI();
+  public static DriveTrain m_driveTrain = new DriveTrain();
 
+  private Command m_autonomousCommand;
 
-  //public static BadLog log;
 
   /**
    * This function is run when the robot is first started up and should be
@@ -35,45 +39,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    //log = BadLog.init("test.bag");
-    //BadLog.createValue("Match Number", ""+ DriverStation.getMatchNumber());
-    //BadLog.createTopic("Match Time","s",() -> DriverStation.getMatchTime());
-
-    m_driveTrain = new DriveTrain();
-    m_oi = new OI();
-
-    //SmartDashboard.putData(new (RotateTo(45f)));
     CameraServer.startAutomaticCapture();
-    //log.finishInitialization();
-    
-  }
-
-  /**
-   * This function is called every robot packet, no matter the mode. Use
-   * this for items like diagnostics that you want ran during disabled,
-   * autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before
-   * LiveWindow and SmartDashboard integrated updating.
-   */
-  @Override
-  public void robotPeriodic() {
-   //log.updateTopics();
-   // log.log();
-  }
-
-  /**
-   * This function is called once each time the robot enters Disabled mode.
-   * You can use it to reset any subsystem information you want to clear when
-   * the robot is disabled.
-   */
-  @Override
-  public void disabledInit() {
-  }
-
-  @Override
-  public void disabledPeriodic() {
-    Scheduler.getInstance().run();
   }
 
   /**
@@ -89,8 +55,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
-    teleopPeriodic();
-
     /*
      * String autoSelected = SmartDashboard.getString("Auto Selector",
      * "Default"); switch(autoSelected) { case "My Auto": autonomousCommand
@@ -98,7 +62,14 @@ public class Robot extends TimedRobot {
      * autonomousCommand = new ExampleCommand(); break; }
      */
 
- 
+    // Stop if we're not doing anything else.
+    m_driveTrain.setDefaultCommand (
+      new RunCommand( () -> m_driveTrain.stop(),
+                      m_driveTrain) );
+
+    // Submit a command to back up for five seconds.
+    m_autonomousCommand = getReverseCommand (5);
+    m_autonomousCommand.schedule();
   }
 
   /**
@@ -106,17 +77,26 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousPeriodic() {
-    Scheduler.getInstance().run();
-    teleopPeriodic();
+    CommandScheduler.getInstance().run();
+  }
+
+  @Override
+  public void autonomousExit() {
+    if (m_autonomousCommand != null) {
+      m_autonomousCommand.cancel();
+    }
   }
 
   @Override
   public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-  
+    // Set up to execute commands from the driver.
+    m_driveTrain.setDefaultCommand (
+      new RunCommand(
+        () ->
+          m_driveTrain.drive (0.8 * - m_oi.getDriver().getLeftX(),
+                              0.8 * - m_oi.getDriver().getLeftY(),
+                              0.8 *   m_oi.getDriver().getRightX()),
+        m_driveTrain));
   }
 
   /**
@@ -124,13 +104,26 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    Scheduler.getInstance().run();
+    CommandScheduler.getInstance().run();
   }
 
-  /**
-   * This function is called periodically during test mode.
-   */
   @Override
-  public void testPeriodic() {
+  public void teleopExit() {
+    // All stop.
+    m_driveTrain.setDefaultCommand (
+      new RunCommand( () -> m_driveTrain.stop(),
+                      m_driveTrain) );
+  }
+
+  // Return a command to back up for time seconds.
+  private Command getReverseCommand (double time)
+  {
+    RunCommand rev = new RunCommand (
+        () ->
+          m_driveTrain.drive (-0.8, 0, 0),
+        m_driveTrain);
+
+    WaitCommand wait = new WaitCommand (5);
+    return new ParallelDeadlineGroup (wait, rev);
   }
 }
