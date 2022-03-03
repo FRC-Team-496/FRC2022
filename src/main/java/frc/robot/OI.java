@@ -10,8 +10,9 @@ package frc.robot;
 
 
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.buttons.Button;
-import edu.wpi.first.wpilibj.buttons.JoystickButton;
+import frc.robot.RobotMap;
+//import edu.wpi.first.wpilibj.buttons.Button;
+//import edu.wpi.first.wpilibj.buttons.JoystickButton;
 
 
 
@@ -48,26 +49,25 @@ public class OI {
   // Start the command when the button is released and let it run the command
   // until it is finished as determined by it's isFinished method.
   // button.whenReleased(new ExampleCommand());
-  private XboxController driverStick = new XboxController(0);
-  private XboxController opStick = new XboxController(1);
+  //JoystickButton opA = new JoystickButton(opStick, 1);
+  //JoystickButton opB = new JoystickButton(opStick, 2);
+  //JoystickButton opX = new JoystickButton(opStick, 3);
+  //JoystickButton opY = new JoystickButton(opStick, 4);
+
+
+  private XboxController m_driverStick = new XboxController(RobotMap.DRIVER_STICK);
+  private XboxController m_opStick = new XboxController(RobotMap.OP_STICK);
   
 
-  
-    
-    JoystickButton opA = new JoystickButton(opStick, 1);
-    JoystickButton opB = new JoystickButton(opStick, 2);
-    JoystickButton opX = new JoystickButton(opStick, 3);
-    JoystickButton opY = new JoystickButton(opStick, 4);
   public OI(){
-
   }
   
   
   
   public XboxController getDriver() {
-    return driverStick;
+    return m_driverStick;
   }
   public XboxController getOp(){
-    return opStick;
+    return m_opStick;
   }
 }
