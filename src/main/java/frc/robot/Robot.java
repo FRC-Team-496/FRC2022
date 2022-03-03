@@ -12,7 +12,8 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.subsystems.DriveTrain;
-
+import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.RobotController;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -25,10 +26,18 @@ public class Robot extends TimedRobot {
   
   public static OI m_oi;
   public static DriveTrain m_driveTrain;
-
+  public final AnalogInput ultrasonic = new AnalogInput(0);
+  static int counter = 0;
 
   //public static BadLog log;
+  public double getDistance() {
+    double rawValue = ultrasonic.getValue();
+    double voltage_scale_factor = 1;
+    double currentDistanceCentimeters = rawValue * voltage_scale_factor * 0.125;
+    // double currentDistanceInches = rawValue * voltage_scale_factor * 0.0492;
 
+    return currentDistanceCentimeters;
+  }
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -89,8 +98,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
-    teleopPeriodic();
-
     /*
      * String autoSelected = SmartDashboard.getString("Auto Selector",
      * "Default"); switch(autoSelected) { case "My Auto": autonomousCommand
@@ -106,8 +113,15 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousPeriodic() {
-    Scheduler.getInstance().run();
+    m_driveTrain.stop();
+    if(counter % 100 == 0){
+      System.out.println(getDistance());
+    }
+    counter++;
+    //voltage_scale_factor allows us to compensate for differences in supply voltage.
+    /*Scheduler.getInstance().run();
     teleopPeriodic();
+    */
   }
 
   @Override
