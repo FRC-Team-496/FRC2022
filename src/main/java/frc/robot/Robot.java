@@ -15,6 +15,8 @@ import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.AnalogInput;
+import com.kauailabs.navx.frc.AHRS;
 import frc.robot.subsystems.DriveTrain;
 
 
@@ -31,7 +33,9 @@ public class Robot extends TimedRobot {
   public static DriveTrain m_driveTrain = new DriveTrain();
 
   private Command m_autonomousCommand;
-
+  private Command m_driveCommand;
+  private final AnalogInput m_ultrasonic = new AnalogInput(0);
+  private final AHRS m_ahrs = new AHRS();
 
   /**
    * This function is run when the robot is first started up and should be
@@ -41,6 +45,15 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     CameraServer.startAutomaticCapture();
   }
+
+  @Override
+  public void robotPeriodic()
+  {
+    double dist = getDistance();
+    SmartDashboard.putNumber("distance", dist);
+    SmartDashboard.putData (m_ahrs);
+  }
+  
 
   /**
    * This autonomous (along with the chooser code above) shows how to select
@@ -90,13 +103,13 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     // Set up to execute commands from the driver.
-    m_driveTrain.setDefaultCommand (
-      new RunCommand(
+    m_driveCommand = new RunCommand(
         () ->
           m_driveTrain.drive (0.8 * - m_oi.getDriver().getLeftX(),
                               0.8 * - m_oi.getDriver().getLeftY(),
                               0.8 *   m_oi.getDriver().getRightX()),
-        m_driveTrain));
+        m_driveTrain);
+    m_driveCommand.schedule();
   }
 
   /**
@@ -110,6 +123,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopExit() {
     // All stop.
+    m_driveCommand.cancel();
     m_driveTrain.setDefaultCommand (
       new RunCommand( () -> m_driveTrain.stop(),
                       m_driveTrain) );
@@ -120,10 +134,19 @@ public class Robot extends TimedRobot {
   {
     RunCommand rev = new RunCommand (
         () ->
-          m_driveTrain.drive (-0.8, 0, 0),
+          m_driveTrain.drive (0.8, 0, 0),
         m_driveTrain);
 
     WaitCommand wait = new WaitCommand (5);
     return new ParallelDeadlineGroup (wait, rev);
+  }
+
+  public double getDistance() {
+    double rawValue = m_ultrasonic.getValue();
+    double voltage_scale_factor = 1;
+    double currentDistanceCentimeters = rawValue * voltage_scale_factor * 0.125;
+    // double currentDistanceInches = rawValue * voltage_scale_factor * 0.0492;
+
+    return currentDistanceCentimeters;
   }
 }
