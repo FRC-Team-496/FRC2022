@@ -11,9 +11,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.XboxController;
 //import frc.robot.RobotMap;
-//import edu.wpi.first.wpilibj.buttons.Button;
-//import edu.wpi.first.wpilibj.buttons.JoystickButton;
-
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 
 
 
@@ -58,11 +56,11 @@ public class OI {
   private XboxController m_driverStick = new XboxController(RobotMap.DRIVER_STICK);
   private XboxController m_opStick = new XboxController(RobotMap.OP_STICK);
   
+  public JoystickButton opA = new JoystickButton(m_opStick, 1);
+  public JoystickButton opB = new JoystickButton(m_opStick, 2);
 
   public OI(){
   }
-  
-  
   
   public XboxController getDriver() {
     return m_driverStick;
