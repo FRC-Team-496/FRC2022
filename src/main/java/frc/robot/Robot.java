@@ -7,6 +7,7 @@
 
 package frc.robot;
 
+//library for camera function
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -20,9 +21,11 @@ import edu.wpi.first.wpilibj.AnalogInput;
 import com.kauailabs.navx.frc.AHRS;
 import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.BallCarriage;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkMaxLowLevel;
+//import com.revrobotics.CANSparkMax;
+//import com.revrobotics.CANSparkMaxLowLevel;
 //import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -38,13 +41,16 @@ public class Robot extends TimedRobot {
   public static BallCarriage m_ballCarriage = new BallCarriage();
 
   private Command m_simpleAutonomousCommand;
+  private Command m_simpleAutonomousSEQCommand;
   private Command m_driveCommand;
-  private Command m_complexAutonomousCommand;
+  private Command m_dropTime;
   private Command m_dumpCommand;
   private Command m_grabCommand;
   private final AnalogInput m_ultrasonic = new AnalogInput(0);
   private final AHRS m_ahrs = new AHRS();
   private Command m_selectedCommand;
+  private Command m_dumpThenDrive;
+  private Command m_stopBallMotorCommand;
 
   private SendableChooser<Command> m_chooser = new SendableChooser<>();
 
@@ -54,10 +60,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    // Submit a command to back up for five seconds.
-    m_simpleAutonomousCommand = getReverseCommand(5);
-    //m_simpleAutonomousCommand.schedule();
-    
     m_dumpCommand = new RunCommand(
       () ->
         m_ballCarriage.runForward(),
@@ -68,23 +70,39 @@ public class Robot extends TimedRobot {
         m_ballCarriage.runBackwards(),
       m_ballCarriage);
 
-    CameraServer.startAutomaticCapture();
-    m_chooser.setDefaultOption("Simple Drive", m_simpleAutonomousCommand);
-    m_chooser.addOption("Sensor Auto", m_complexAutonomousCommand);
+    m_stopBallMotorCommand = new InstantCommand(
+      () ->
+        m_ballCarriage.stop(),
+      m_ballCarriage);
 
+    // Submit a command to back up for five seconds.
+    m_simpleAutonomousCommand = getReverseCommand(5);
+    m_simpleAutonomousSEQCommand = getReverseCommand(5);
+    //m_simpleAutonomousCommand.schedule();
+    // Dump Ball Motor for one second.
+    m_dropTime = getDropTime(1);
+    
+
+    m_dumpThenDrive = new SequentialCommandGroup (m_dropTime, m_stopBallMotorCommand, m_simpleAutonomousSEQCommand);
+
+    CameraServer.startAutomaticCapture();
+    m_chooser.setDefaultOption("Simple Reverse", m_simpleAutonomousCommand);
+    m_chooser.addOption("Dump and Reverse", m_dumpThenDrive);
+  
     m_oi.opA.whileActiveOnce(m_dumpCommand);
     m_oi.opB.whileActiveOnce(m_grabCommand);
 
     m_ballCarriage.setDefaultCommand (
       new RunCommand( () -> m_ballCarriage.stop(),
                       m_ballCarriage) );
+    
   }
 
   @Override
   public void robotPeriodic()
   {
-    double dist = getDistance();
-    SmartDashboard.putNumber("distance", dist);
+    //double dist = getDistance();
+    //SmartDashboard.putNumber("distance", dist);
     SmartDashboard.putData(m_ahrs);
     SmartDashboard.putData(m_chooser);
     CommandScheduler.getInstance().run();
@@ -113,11 +131,14 @@ public class Robot extends TimedRobot {
 
     // Stop if we're not doing anything else.
     
-    
     m_driveTrain.setDefaultCommand (
       new RunCommand( () -> m_driveTrain.stop(),
                       m_driveTrain) );
 
+    m_selectedCommand = m_chooser.getSelected();
+    if(m_selectedCommand != null){
+      m_selectedCommand.schedule();
+    }
   }
 
   /**
@@ -173,6 +194,12 @@ public class Robot extends TimedRobot {
 
     WaitCommand wait = new WaitCommand (time);
     return new ParallelDeadlineGroup (wait, rev);
+  }
+
+  private Command getDropTime (double time)
+  {
+    WaitCommand wait = new WaitCommand (time);
+    return new ParallelDeadlineGroup (wait, m_dumpCommand);
   }
 
   public double getDistance() {

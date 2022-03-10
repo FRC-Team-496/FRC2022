@@ -17,17 +17,17 @@ public class BallCarriage extends SubsystemBase {
 
     public void runForward() {
         ballMotor.setVoltage(12);
-        System.out.println("Forward");
+        //System.out.println("Forward");
     }
 
     public void runBackwards() {
         ballMotor.setVoltage(-12);
-        System.out.println("Back");
+        //System.out.println("Back");
     }
 
     public void stop() {
-        ballMotor.stopMotor();
-        System.out.println("STOP");
+        ballMotor.setVoltage(0);
+        //System.out.println("STOP");
     }
 }
 
