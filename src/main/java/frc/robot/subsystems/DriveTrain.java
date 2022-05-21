@@ -27,7 +27,7 @@ public class DriveTrain extends Subsystem {
   // here. Call these from Commands.
   AHRS ahrs;
   WPI_TalonFX front_left, front_right, rear_left, rear_right;
-  MecanumDrive  m_drive;
+  public MecanumDrive  m_drive;
   Encoder left_Encoder, right_Encoder;
 
   public DriveTrain() {
