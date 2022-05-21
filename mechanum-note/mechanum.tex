@@ -1,0 +1,295 @@
+\def\mA{\ensuremath{{\bf A}}}
+\def\mB{\ensuremath{{\bf B}}}
+\def\mC{\ensuremath{{\bf C}}}
+\def\mD{\ensuremath{{\bf D}}}
+\def\mu{\ensuremath{{\bf u}}}
+\def\mx{\ensuremath{{\bf x}}}
+\def\my{\ensuremath{{\bf y}}}
+
+\documentclass[12pt]{article}
+\usepackage{siunitx}
+\begin{document}
+\title{Drive kinematics and simulation}
+\author{sss}
+\maketitle
+
+A useful reference: http://fbsbook.org.
+
+\section{Motor constants}
+
+A DC motor typically consists of a permanent magnet rotating relative
+to a conducting coil.  As the magnet rotates, it induces an EMF in the
+coil.  This `back-EMF' is proportional to the angular velocity:
+\begin{equation}
+  E = K_e \omega .
+\end{equation}
+
+A DC motor can be modeled as a resistance $R$ in series with the back EMF.
+Therefore, given the applied voltage $V$ and current $I$:
+\begin{equation}
+  V = IR + E = IR + K_e \omega.
+\end{equation}
+
+In other words, when a voltage is applied to the motor, it increases in speed
+until the back-EMF (plus resistive losses) balance the applied voltage.
+
+If the current with no load is $I_0$, then the maximum speed of the motor
+is
+\begin{equation}
+  \omega_{\max} = {V-I_0R \over K_e}.
+\end{equation}
+
+Also note that when the motor is stalled, $E=0$, so the resistance
+can be found using the current drawn at the stall:
+\begin{equation}
+  R = V / I_{\mathrm{stall}}.
+\end{equation}
+
+It is common to write $K_V = 1/K_e$.  Then the motor speed for a given applied
+voltage is
+\begin{equation}
+  \omega = K_V (V-IR).
+\end{equation}
+In practice, the $IR$ term is usually small compared to $V$ and can be
+neglected, giving
+\begin{equation}
+  \omega = K_V V.
+\end{equation}
+$K_V$ is sometimes called the motor velocity constant, and has SI units
+of $1/Vs$ (though it is sometimes given as $\textrm{RPM}/V$).
+
+The torque of the motor is related to the current via the motor
+torque constant $K_T$:
+\begin{equation}
+  \tau = K_T I.
+\end{equation}
+This constant can be calculated from the torque required to stall the motor
+and the current draw at the stall:
+\begin{equation}
+  K_T = \tau_{\textrm{stall}} / I_{\textrm{stall}}.
+\end{equation}
+
+$K_T$ and $K_V$ are not independent; they are inversely related.
+The electrical power input to the motor is
+\begin{equation}
+  P_{\textrm{in}} = VI = (IR + K_e\omega)I = I^2R + IK_e\omega
+\end{equation}
+while the mechanical power out is
+\begin{equation}
+  P_{\textrm{out}} = \tau\omega = IK_T\omega,
+\end{equation}
+while losses are
+\begin{equation}
+  P_{\textrm{loss}} = I^2R.
+\end{equation}.
+But
+\begin{equation}
+  P_{\textrm{in}} = P_{\textrm{out}} + P_{\textrm{loss}},
+\end{equation}
+which implies that
+\begin{equation}
+  K_T = K_e = 1/K_V.
+\end{equation}
+
+To take a specific example, the Falcon 500  motor operates at $\SI{12}{\V}$,
+with $I_0 = \SI{1.5}{\A}$, $I_{\textrm{stall}} = \SI{257}{\A}$,
+$\tau_{\textrm{stall}} = \SI{4.69}{\N\m}$,
+and $\omega_{\max} = \SI{6380}{RPM} = \SI{668}{/\s}$.
+This then gives $R=V/I_{\textrm{stall}}=\SI{0.047}{\ohm}$,
+$K_V = \omega_{\max} / (V-I_0R) = \SI{60.0}{/\V\s}$ and
+$K_T = \tau_{\textrm{stall}} / I_{\textrm{stall}} = \SI{0.018}{\N\m/\A}$.
+And $1/60 = 0.017$, so these are nearly inverse of each other.
+(Note that since power is voltage times current,
+$\textrm{VA} = \textrm{Nm}/\textrm{s}$ or $\textrm{Vs} = \textrm{NM}/\textrm{A}$.)
+
+
+\section{A unicycle}
+
+Let's now apply this to a putative vehicle with a single wheel,
+constrained to move in one dimension.  In addition to
+$R$, $K_V$, and $K_T$ of the motor, let $m$ be the mass,
+$r_w$ be the wheel radius, and $g$ be the gear ratio between
+the motor and the wheel.
+
+Let $v$ be the (one-dimensional) velocity and $V$ be the voltage
+applied to the motor.  Then we want to write:
+\begin{equation}
+  m \dot v = c_1 v + c_2 V.
+\end{equation}
+(Using the notation $\dot v = dv/dt$.)
+So the right-hand side represents the force acting on the vehicle.
+
+Consider the $c_2$ term first.  If the motor voltage is $V$, then the
+current is $I = V/R$, the motor torque is $\tau_m = IK_T = K_T V/R$,
+the wheel torque is $\tau_w = gK_T V/R$, and the force on the vehicle
+is $F = \tau_w / r_w$, which implies
+\begin{equation}
+  c_2 = {g K_T \over R r_w}.
+\end{equation}
+
+Now, consider the case where the voltage on the motor is zero.
+A rotating motor generates an EMF, so if the voltage is zero, then
+something must be absorbing the power produced by the motor; hence,
+the motor will act as a brake.  We can thus write
+\begin{equation}
+  m \dot v = - { g K_T \over R r_w } E,
+\end{equation}
+where $E$ is the back-EMF.  But $E = K_e\omega_m = g \omega_w / K_V =
+g v / r_w K_V$.  Putting this together, we get
+\begin{equation}
+  c_1 = - { g^2 K_T \over K_V R r_w^2}.
+\end{equation}
+
+To specify the state of the vehicle, we also need its position $s$.
+The equation for this is trivial:
+\begin{equation}
+  \dot s = v.
+\end{equation}
+
+\section{State space representation}
+
+The dynamical variables describing the state of a system make up the
+\emph{state space}.  These variables contain sufficient information
+to find the future state of the system.
+
+Formally, we write the state variables as an $n$-element vector $\mx$.
+The system can also have control inputs, which we represent
+as a $p$-element vector $\mu$.  We can also make measurements
+on the system, which we represent as an $q$-element vector $\my$.
+The system can then be described by
+\begin{eqnarray}
+  {\bf\dot x} &=& f(\mx, \mu)\\
+  \my &=& h(\mx, \mu)
+\end{eqnarray}
+
+If $f$ and $h$ are time-invariant and linear, then we can write this as
+\begin{eqnarray}
+  {\bf\dot x} &=& \mA\mx + \mB\mu \\
+  \my &=& \mC\mx + \mD\mu.
+\end{eqnarray}
+The matrix $\mA$ is called the `system' or `dynamics' or `state' matrix;
+$\mB$ is called the `input' or `control' matrix;
+$\mC$ is called the `output' or `sensor' matrix; and
+$\mD$ is called the `feedthrough' or `feedforward' or `direct' matrix.
+
+
+\section{Differential drive}
+
+Here, the system consists of two identical motors with wheels separated
+by distance $2r_b$, and the system can move in two dimensions.
+The mass is again $m$, and the moment of inertia is $I$.
+
+The state variables here are the $x$ and $y$ positions, $s_x$ and $s_y$,
+the heading $\theta$, the positions of the two wheels
+$d_L$ and $d_R$, and their velocities $\dot d_L$, $\dot d_R$.
+We can write this as a vector:
+$\mx = [s_x, s_y, \theta, \dot d_L, \dot d_R, d_L, d_R]^T$.
+The control inputs are the motor voltages: $\mu = [V_L, V_R]^T$.
+
+Using the results from the previous section, the forces on the
+vehicle produced by the left and right motors are
+\begin{equation}
+  F_L = c_1 \dot d_L + c_2 V_L.
+\end{equation}
+and similarly for the other motor.  Given $F_L$ and $F_R$,
+the total force is $F_{\textrm{tot}} = F_L + F_R$ and the torque is
+$\tau = (F_L -F_R) r_b$.  Therefore, the acceleration for one
+of the wheels is
+\begin{eqnarray}
+  \ddot d_L &=& {1\over m}F_{\textrm{tot}} + {r_b\over I}\tau\\
+            &=& {1\over m}(F_L + F_R) + {r_b^2\over I}(F_L - F_R)\\
+            &=& \left({1\over m} + {r_b^2\over I}\right) c_1 \dot d_L +
+                \left({1\over m} - {r_b^2\over I}\right) c_1 \dot d_R +\\
+            & & \left({1\over m} + {r_b^2\over I}\right) c_2 V_L +
+                \left({1\over m} - {r_b^2\over I}\right) c_2 V_R \nonumber\\
+            &=& c_3 c_1 \dot d_L + c_4 c_1 \dot d_R + c_3 c_2 V_L + c_4 c_2 V_R ,
+\end{eqnarray}
+where
+\begin{eqnarray}
+  c_3 &=& \left({1\over m} + {r_b^2\over I}\right) \\
+  c_4 &=& \left({1\over m} - {r_b^2\over I}\right).
+\end{eqnarray}
+Similarly,
+\begin{equation}
+  \ddot d_R = c_4 c_1 \dot d_L + c_3 c_1 \dot d_R + c_4 c_2 V_L + c_3 c_2 V_R.
+\end{equation}
+
+In addition, if we call the forward velocity
+$v = {1\over 2}(\dot d_L + \dot d_R)$, then
+\begin{eqnarray}
+  \dot s_x &=& v \cos \theta \\
+  \dot s_y &=& v \sin \theta \\
+  \dot \theta &=& (\dot d_R - \dot d_L) / 2r_b.
+\end{eqnarray}
+
+For the subset of state variables
+$\mx = [\dot d_L, \dot d_R, d_L, d_R]^T$, with $\mu = [V_L, V_R]^T$,
+the dynamics can then be written in the notation of the previous
+section as
+\begin{equation}
+  \dot\mx = \mA\mx + \mB \mu
+\end{equation}
+with
+\begin{equation}
+  \mA = \left[ \begin{array}{cccc}
+  c_1c_3 & c_1c_4 & 0 & 0 \\
+  c_1c_4 & c_1c_3 & 0 & 0 \\
+  1 & 0 & 0 & 0 \\
+  0 & 1 & 0 & 0 \\
+\end{array} \right]
+\end{equation}
+and
+\begin{equation}
+  \mB = \left[ \begin{array}{cc}
+  c_2c_3 & c_2c_4 \\
+  c_2c_4 & c_2c_3 \\
+  0 & 0 \\
+  0 & 0 \\
+\end{array} \right].
+\end{equation}
+
+
+\section{Runge-Kutta integration}
+
+Given
+\begin{equation}
+  {dy \over dt} = f'(y, t)
+\end{equation}
+with an initial value of $y$ at some $t$, one can use Euler's method
+to integrate this in steps of $t$ of size $h$:
+\begin{equation}
+  y_{n+1} = y_n + hf'(y_n, t_n).
+\end{equation}
+
+In practice, however, this is not a good method to use.
+The error per step is $O(h^2)$, as can be seen from a series expansion:
+\begin{equation}
+  y(t_n+h) = y(t_n) + {dy\over dt}(t_n) h + O(h^2).
+\end{equation}
+So over the $\sim 1/h$ steps needed to cover a fixed-size interval,
+the error is $O(h)$.  This is not very accurate.
+
+We can do better by first taking a trial step to the midpoint
+of the interval and then using the derivatives calculated there
+for entire step.  That is,
+\begin{eqnarray}
+  k_1 &=& h f'(t_n, y_n) \\
+  k_2 &=& h f'(t_n + {h\over2}, y_n + {k_1\over2}) \\
+  y_{n+1} &=& y_n + k_2.
+\end{eqnarray}
+This ends up canceling some the first order error terms, giving
+a step error of $O(h^3)$.
+
+One can go further in canceling error terms.  Fourth-order Runge-Kutta
+is defined by 
+\begin{eqnarray}
+  k_1 &=& h f'(t_n, y_n) \\
+  k_2 &=& h f'(t_n + {h\over2}, y_n + {k_1\over2}) \\
+  k_3 &=& h f'(t_n + {h\over2}, y_n + {k_2\over2}) \\
+  k_4 &=& h f'(t_n + h, y_n + k_3) \\
+  y_{n+1} &=& y_n + {k_1\over6} + {k_2\over3} + {k_3\over3} + {k_4\over6}
+\end{eqnarray}
+and has a step error of $O(h^5)$.  One can extend this further,
+but that is usually not found to be worthwhile.
+
+\end{document}
