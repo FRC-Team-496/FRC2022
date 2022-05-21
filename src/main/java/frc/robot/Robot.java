@@ -7,13 +7,25 @@
 
 package frc.robot;
 
+//library for camera function
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.command.Scheduler;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.subsystems.DriveTrain;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.AnalogInput;
-import edu.wpi.first.wpilibj.RobotController;
+import com.kauailabs.navx.frc.AHRS;
+import frc.robot.subsystems.DriveTrain;
+import frc.robot.subsystems.BallCarriage;
+//import com.revrobotics.CANSparkMax;
+//import com.revrobotics.CANSparkMaxLowLevel;
+//import com.revrobotics.CANSparkMaxLowLevel.MotorType;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -24,66 +36,78 @@ import edu.wpi.first.wpilibj.RobotController;
  */
 public class Robot extends TimedRobot {
   
-  public static OI m_oi;
-  public static DriveTrain m_driveTrain;
-  public final AnalogInput ultrasonic = new AnalogInput(0);
-  static int counter = 0;
+  public static OI m_oi = new OI();
+  public static DriveTrain m_driveTrain = new DriveTrain();
+  public static BallCarriage m_ballCarriage = new BallCarriage();
 
-  //public static BadLog log;
-  public double getDistance() {
-    double rawValue = ultrasonic.getValue();
-    double voltage_scale_factor = 1;
-    double currentDistanceCentimeters = rawValue * voltage_scale_factor * 0.125;
-    // double currentDistanceInches = rawValue * voltage_scale_factor * 0.0492;
+  private Command m_simpleAutonomousCommand;
+  private Command m_simpleAutonomousSEQCommand;
+  private Command m_driveCommand;
+  private Command m_dropTime;
+  private Command m_dumpCommand;
+  private Command m_grabCommand;
+  private final AnalogInput m_ultrasonic = new AnalogInput(0);
+  private final AHRS m_ahrs = new AHRS();
+  private Command m_selectedCommand;
+  private Command m_dumpThenDrive;
+  private Command m_stopBallMotorCommand;
 
-    return currentDistanceCentimeters;
-  }
+  private SendableChooser<Command> m_chooser = new SendableChooser<>();
+
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
    */
   @Override
   public void robotInit() {
-    //log = BadLog.init("test.bag");
-    //BadLog.createValue("Match Number", ""+ DriverStation.getMatchNumber());
-    //BadLog.createTopic("Match Time","s",() -> DriverStation.getMatchTime());
+    m_dumpCommand = new RunCommand(
+      () ->
+        m_ballCarriage.runForward(),
+      m_ballCarriage);
 
-    m_driveTrain = new DriveTrain();
-    m_oi = new OI();
+    m_grabCommand = new RunCommand(
+      () ->
+        m_ballCarriage.runBackwards(),
+      m_ballCarriage);
 
-    //SmartDashboard.putData(new (RotateTo(45f)));
+    m_stopBallMotorCommand = new InstantCommand(
+      () ->
+        m_ballCarriage.stop(),
+      m_ballCarriage);
+
+    // Submit a command to back up for five seconds.
+    m_simpleAutonomousCommand = getReverseCommand(5);
+    m_simpleAutonomousSEQCommand = getReverseCommand(5);
+    //m_simpleAutonomousCommand.schedule();
+    // Dump Ball Motor for one second.
+    m_dropTime = getDropTime(1);
+    
+
+    m_dumpThenDrive = new SequentialCommandGroup (m_dropTime, m_stopBallMotorCommand, m_simpleAutonomousSEQCommand);
+
     CameraServer.startAutomaticCapture();
-    //log.finishInitialization();
+    m_chooser.setDefaultOption("Simple Reverse", m_simpleAutonomousCommand);
+    m_chooser.addOption("Dump and Reverse", m_dumpThenDrive);
+  
+    m_oi.opA.whileActiveOnce(m_dumpCommand);
+    m_oi.opB.whileActiveOnce(m_grabCommand);
+
+    m_ballCarriage.setDefaultCommand (
+      new RunCommand( () -> m_ballCarriage.stop(),
+                      m_ballCarriage) );
     
   }
 
-  /**
-   * This function is called every robot packet, no matter the mode. Use
-   * this for items like diagnostics that you want ran during disabled,
-   * autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before
-   * LiveWindow and SmartDashboard integrated updating.
-   */
   @Override
-  public void robotPeriodic() {
-   //log.updateTopics();
-   // log.log();
+  public void robotPeriodic()
+  {
+    //double dist = getDistance();
+    //SmartDashboard.putNumber("distance", dist);
+    SmartDashboard.putData(m_ahrs);
+    SmartDashboard.putData(m_chooser);
+    CommandScheduler.getInstance().run();
   }
-
-  /**
-   * This function is called once each time the robot enters Disabled mode.
-   * You can use it to reset any subsystem information you want to clear when
-   * the robot is disabled.
-   */
-  @Override
-  public void disabledInit() {
-  }
-
-  @Override
-  public void disabledPeriodic() {
-    Scheduler.getInstance().run();
-  }
+  
 
   /**
    * This autonomous (along with the chooser code above) shows how to select
@@ -105,7 +129,17 @@ public class Robot extends TimedRobot {
      * autonomousCommand = new ExampleCommand(); break; }
      */
 
- 
+    // Stop if we're not doing anything else.
+
+    
+    m_driveTrain.setDefaultCommand (
+      new RunCommand( () -> m_driveTrain.stop(),
+                      m_driveTrain) );
+
+    m_selectedCommand = m_chooser.getSelected();
+    if(m_selectedCommand != null){
+      m_selectedCommand.schedule();
+    }
   }
 
   /**
@@ -113,38 +147,72 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousPeriodic() {
-    m_driveTrain.stop();
-    if(counter % 100 == 0){
-      System.out.println(getDistance());
+    CommandScheduler.getInstance().run();
+
+  }
+
+  @Override
+  public void autonomousExit() {
+    if (m_simpleAutonomousCommand != null) {
+      m_simpleAutonomousCommand.cancel();
     }
-    counter++;
-    //voltage_scale_factor allows us to compensate for differences in supply voltage.
-    /*Scheduler.getInstance().run();
-    teleopPeriodic();
-    */
   }
 
   @Override
   public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-  
+    // Set up to execute commands from the driver.
+    m_driveCommand = new RunCommand(
+        () ->
+          m_driveTrain.drive (0.8 * - m_oi.getDriver().getLeftX(),
+                              0.8 * - m_oi.getDriver().getLeftY(),
+                              0.8 *   m_oi.getDriver().getRightX()),
+        m_driveTrain);
+    m_driveCommand.schedule();
   }
-
   /**
    * This function is called periodically during operator control.
    */
   @Override
   public void teleopPeriodic() {
-    Scheduler.getInstance().run();
+    CommandScheduler.getInstance().run();
   }
 
-  /**
-   * This function is called periodically during test mode.
-   */
   @Override
-  public void testPeriodic() {
+  public void teleopExit() {
+    // All stop.
+    m_driveCommand.cancel();
+    m_driveTrain.setDefaultCommand (
+      new RunCommand( () -> m_driveTrain.stop(),
+                      m_driveTrain) );
+  }
+
+  // Return a command to back up for time seconds.
+  private Command getReverseCommand (double time)
+  {
+    RunCommand rev = new RunCommand (
+        () ->  m_driveTrain.drive (0.8, 0, 0),
+        m_driveTrain);
+
+    WaitCommand wait = new WaitCommand (time);
+    return new ParallelDeadlineGroup (wait, rev);
+  }
+
+  private Command getDropTime (double time)
+  {
+    WaitCommand wait = new WaitCommand (time);
+    return new ParallelDeadlineGroup (wait, m_dumpCommand);
+  }
+
+  public double getDistance() {
+    double rawValue = m_ultrasonic.getValue();
+    double voltage_scale_factor = 1;
+    double currentDistanceCentimeters = rawValue * voltage_scale_factor * 0.125;
+    // double currentDistanceInches = rawValue * voltage_scale_factor * 0.0492;
+
+    return currentDistanceCentimeters;
+  }
+  
+  public Command getAutonomousCommand() {
+    return m_chooser.getSelected();
   }
 }
