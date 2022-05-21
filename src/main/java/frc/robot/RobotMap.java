@@ -21,5 +21,5 @@ public class RobotMap {
   public static final int TALON_REAR_RIGHT  = 4;
 
   public static final int DRIVER_STICK = 0;
-  public static final int OP_STICK = 0;
+  public static final int OP_STICK = 1;
 }

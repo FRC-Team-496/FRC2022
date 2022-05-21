@@ -9,6 +9,20 @@
       "name": "Launch Main",
       "request": "launch",
       "mainClass": "frc.robot.Main",
+      "projectName": "FRC2022-sss"
+    },
+    {
+      "type": "java",
+      "name": "Launch Main",
+      "request": "launch",
+      "mainClass": "frc.robot.Main",
+      "projectName": "FRC2022"
+    },
+    {
+      "type": "java",
+      "name": "Launch Main",
+      "request": "launch",
+      "mainClass": "frc.robot.Main",
       "projectName": "496InfiniteRecharge-Official-Imported"
     },
     {

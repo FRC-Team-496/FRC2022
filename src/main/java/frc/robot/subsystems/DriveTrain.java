@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.drive.MecanumDrive;
 import frc.robot.RobotMap;
 
 
+
 public class DriveTrain extends SubsystemBase {
   //AHRS ahrs;
 
@@ -15,9 +16,7 @@ public class DriveTrain extends SubsystemBase {
   private final WPI_TalonFX m_frontRight = new WPI_TalonFX(RobotMap.TALON_FRONT_RIGHT);
   private final WPI_TalonFX m_rearLeft = new WPI_TalonFX(RobotMap.TALON_REAR_LEFT);
   private final WPI_TalonFX m_rearRight = new WPI_TalonFX(RobotMap.TALON_REAR_RIGHT);
-  private final MecanumDrive m_drive =
-    new MecanumDrive (m_frontLeft, m_frontRight, m_rearLeft, m_rearRight);
-
+  private final MecanumDrive m_drive = new MecanumDrive (m_frontLeft, m_frontRight, m_rearLeft, m_rearRight);
 
   public DriveTrain()
   {
