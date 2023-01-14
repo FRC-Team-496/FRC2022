@@ -58,6 +58,8 @@ public class OI {
   
   public JoystickButton opA = new JoystickButton(m_opStick, 1);
   public JoystickButton opB = new JoystickButton(m_opStick, 2);
+  public JoystickButton opX = new JoystickButton(m_opStick, 3);
+  public JoystickButton opY = new JoystickButton(m_opStick, 4);
 
   public OI(){
   }

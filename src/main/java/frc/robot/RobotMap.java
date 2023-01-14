@@ -19,6 +19,8 @@ public class RobotMap {
   public static final int TALON_FRONT_RIGHT = 2;
   public static final int TALON_REAR_LEFT   = 3;
   public static final int TALON_REAR_RIGHT  = 4;
+  public static final int TALON_CARRIAGE_ARM = 6;
+
 
   public static final int DRIVER_STICK = 0;
   public static final int OP_STICK = 1;

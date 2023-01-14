@@ -17,10 +17,11 @@ import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.AnalogInput;
+//import edu.wpi.first.wpilibj.AnalogInput;
 import com.kauailabs.navx.frc.AHRS;
 import frc.robot.subsystems.DriveTrain;
 import frc.robot.subsystems.BallCarriage;
+import frc.robot.subsystems.ArmBall;
 //import com.revrobotics.CANSparkMax;
 //import com.revrobotics.CANSparkMaxLowLevel;
 //import com.revrobotics.CANSparkMaxLowLevel.MotorType;
@@ -39,14 +40,19 @@ public class Robot extends TimedRobot {
   public static OI m_oi = new OI();
   public static DriveTrain m_driveTrain = new DriveTrain();
   public static BallCarriage m_ballCarriage = new BallCarriage();
+  public static ArmBall m_armBall = new ArmBall();
 
   private Command m_simpleAutonomousCommand;
   private Command m_simpleAutonomousSEQCommand;
   private Command m_driveCommand;
   private Command m_dropTime;
   private Command m_dumpCommand;
+  private Command m_dumpSEQCommand;
   private Command m_grabCommand;
-  private final AnalogInput m_ultrasonic = new AnalogInput(0);
+  private Command m_armUpCommand;
+  private Command m_armDownCommand;
+  private Command m_armStop;
+  //private final AnalogInput m_ultrasonic = new AnalogInput(0);
   private final AHRS m_ahrs = new AHRS();
   private Command m_selectedCommand;
   private Command m_dumpThenDrive;
@@ -65,6 +71,11 @@ public class Robot extends TimedRobot {
         m_ballCarriage.runForward(),
       m_ballCarriage);
 
+    m_dumpSEQCommand = new RunCommand(
+      () ->
+        m_ballCarriage.runForward(),
+      m_ballCarriage);
+
     m_grabCommand = new RunCommand(
       () ->
         m_ballCarriage.runBackwards(),
@@ -75,9 +86,26 @@ public class Robot extends TimedRobot {
         m_ballCarriage.stop(),
       m_ballCarriage);
 
+  //ARM COMMANDS ---------------------
+    m_armUpCommand = new RunCommand(
+      () ->
+        m_armBall.armUp(),
+      m_armBall);
+
+    m_armDownCommand = new RunCommand(
+      () ->
+        m_armBall.armDown(),
+      m_armBall);
+
+    m_armStop = new InstantCommand(
+      () ->
+        m_armBall.armStop(),
+      m_armBall);
+      
+
     // Submit a command to back up for five seconds.
-    m_simpleAutonomousCommand = getReverseCommand(5);
-    m_simpleAutonomousSEQCommand = getReverseCommand(5);
+    m_simpleAutonomousCommand = getReverseCommand(3.2);
+    m_simpleAutonomousSEQCommand = getReverseCommand(3.2);
     //m_simpleAutonomousCommand.schedule();
     // Dump Ball Motor for one second.
     m_dropTime = getDropTime(1);
@@ -92,9 +120,16 @@ public class Robot extends TimedRobot {
     m_oi.opA.whileActiveOnce(m_dumpCommand);
     m_oi.opB.whileActiveOnce(m_grabCommand);
 
+    m_oi.opX.whileActiveOnce(m_armDownCommand);
+    m_oi.opY.whileActiveOnce(m_armUpCommand);
+
     m_ballCarriage.setDefaultCommand (
       new RunCommand( () -> m_ballCarriage.stop(),
                       m_ballCarriage) );
+
+    m_armBall.setDefaultCommand(
+      new RunCommand( () -> m_armBall.armStop(),
+                      m_armBall) );
     
   }
 
@@ -103,9 +138,12 @@ public class Robot extends TimedRobot {
   {
     //double dist = getDistance();
     //SmartDashboard.putNumber("distance", dist);
+    SmartDashboard.putBoolean("limit_switch", m_armBall.m_topLimitSwitch.get());
     SmartDashboard.putData(m_ahrs);
     SmartDashboard.putData(m_chooser);
     CommandScheduler.getInstance().run();
+    System.out.println("Bottom:" + m_armBall.m_bottomLimitSwitch.get());
+    System.out.println("Top:" + m_armBall.m_topLimitSwitch.get());
   }
   
 
@@ -162,9 +200,9 @@ public class Robot extends TimedRobot {
     // Set up to execute commands from the driver.
     m_driveCommand = new RunCommand(
         () ->
-          m_driveTrain.drive (0.8 * - m_oi.getDriver().getLeftX(),
-                              0.8 * - m_oi.getDriver().getLeftY(),
-                              0.8 *   m_oi.getDriver().getRightX()),
+          m_driveTrain.drive (0.9 * - m_oi.getDriver().getLeftX(),
+                              0.9 * - m_oi.getDriver().getLeftY(),
+                              0.9 *   m_oi.getDriver().getRightX()),
         m_driveTrain);
     m_driveCommand.schedule();
   }
@@ -174,6 +212,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     CommandScheduler.getInstance().run();
+    
   }
 
   @Override
@@ -189,7 +228,7 @@ public class Robot extends TimedRobot {
   private Command getReverseCommand (double time)
   {
     RunCommand rev = new RunCommand (
-        () ->  m_driveTrain.drive (0.8, 0, 0),
+        () ->  m_driveTrain.drive (0, -0.6, 0),
         m_driveTrain);
 
     WaitCommand wait = new WaitCommand (time);
@@ -199,10 +238,10 @@ public class Robot extends TimedRobot {
   private Command getDropTime (double time)
   {
     WaitCommand wait = new WaitCommand (time);
-    return new ParallelDeadlineGroup (wait, m_dumpCommand);
+    return new ParallelDeadlineGroup (wait, m_dumpSEQCommand);
   }
 
-  public double getDistance() {
+  /*public double getDistance() {
     double rawValue = m_ultrasonic.getValue();
     double voltage_scale_factor = 1;
     double currentDistanceCentimeters = rawValue * voltage_scale_factor * 0.125;
@@ -210,7 +249,7 @@ public class Robot extends TimedRobot {
 
     return currentDistanceCentimeters;
   }
-  
+  */
   public Command getAutonomousCommand() {
     return m_chooser.getSelected();
   }
